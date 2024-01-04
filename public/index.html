@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>File Calendar</title>
+    <style>
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-gap: 10px;
+        }
+
+        .day {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 20px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .day input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .date-label {
+            font-size: 16px;
+            text-align: center;
+            position: absolute;
+            left: 0;
+            width: 100%;
+            z-index: 1;
+            pointer-events: none;
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            position: sticky;
+            top: 0;
+            background: white;
+            padding: 5px;
+            z-index: 99;
+        }
+
+        .weekday {
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .month-separator {
+            grid-column: span 7;
+            height: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="weekdays">
+        <div class="weekday">Sunday</div>
+        <div class="weekday">Monday</div>
+        <div class="weekday">Tuesday</div>
+        <div class="weekday">Wednesday</div>
+        <div class="weekday">Thursday</div>
+        <div class="weekday">Friday</div>
+        <div class="weekday">Saturday</div>
+    </div>
+    <div class="calendar" id="calendar"></div>
+
+    <script>
+        const calendar = document.getElementById('calendar');
+        const startDate = new Date('1985-01-01T00:00:00-06:00');
+        const endDate = new Date('2002-12-31T00:00:00-06:00');
+
+        while (startDate.getDay() !== 1) {
+            startDate.setDate(startDate.getDate() - 1);
+        }
+
+        let lastMonth = null;
+        for (let dt = new Date(startDate); dt <= endDate; dt.setDate(dt.getDate() + 1)) {
+            if (dt.getMonth() !== lastMonth) {
+                if (lastMonth !== null) {
+                    const separator = document.createElement('div');
+                    separator.className = 'month-separator';
+                    calendar.appendChild(separator);
+                }
+                lastMonth = dt.getMonth();
+
+                // Offset the start of the month
+                let firstDayOfMonth = new Date(dt.getFullYear(), dt.getMonth(), 1);
+                let dayOfWeek = firstDayOfMonth.getDay();
+                let offset = dayOfWeek
+                for (let i = 0; i < offset; i++) {
+                    const emptyDayElem = document.createElement('div');
+                    emptyDayElem.className = 'day';
+                    calendar.appendChild(emptyDayElem);
+                }
+            }
+
+            const dayElem = document.createElement('div');
+            dayElem.className = 'day';
+            const formattedDate = `${dt.getMonth() + 1} ${dt.getDate()} '${dt.getFullYear().toString().substr(-2)}`;
+            dayElem.innerHTML = `<div class="date-label">${formattedDate}</div><input type="file" class="input" data-date="${dt.toISOString().split('T')[0]}" multiple>`;
+            calendar.appendChild(dayElem);
+        }
+
+        calendar.addEventListener('change', handleFileSelect);
+        calendar.addEventListener('dragover', (event) => event.preventDefault());
+        calendar.addEventListener('drop', handleFileDrop);
+
+        function handleFileSelect(event) {
+            if (event.target.className.includes('input')) {
+                uploadFiles(event.target.files, event.target.dataset.date);
+            }
+        }
+
+        function handleFileDrop(event) {
+            event.preventDefault();
+            if (event.target.className.includes('input')) {
+                uploadFiles(event.dataTransfer.files, event.target.dataset.date);
+            }
+        }
+
+        function uploadFiles(files, date) {
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
+            formData.append('date', date);
+            fetch('/upload', {method: 'POST', body: formData})
+                .then(response => response.text())
+                .then(result => console.log(result));
+        }
+    </script>
+</body>
+
+</html>
